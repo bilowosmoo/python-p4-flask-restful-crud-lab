@@ -1,28 +1,11 @@
-#!/usr/bin/env python3
-
-from app import app
-from models import db, Plant
-
+from app import app, db
+from models import Plant
 
 with app.app_context():
-
     Plant.query.delete()
 
-    aloe = Plant(
-        id=1,
-        name="Aloe",
-        image="./images/aloe.jpg",
-        price=11.50,
-        is_in_stock=True,
-    )
+    p1 = Plant(name="Aloe Vera", image="https://img.com/aloe.jpg", price=10.0)
+    p2 = Plant(name="Basil", image="https://img.com/basil.jpg", price=5.0)
 
-    zz_plant = Plant(
-        id=2,
-        name="ZZ Plant",
-        image="./images/zz-plant.jpg",
-        price=25.98,
-        is_in_stock=False,
-    )
-
-    db.session.add_all([aloe, zz_plant])
+    db.session.add_all([p1, p2])
     db.session.commit()

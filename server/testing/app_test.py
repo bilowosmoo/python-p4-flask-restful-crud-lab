@@ -1,59 +1,44 @@
-import json
+import unittest
+from flask import Flask,request
+from app import app, db
+from models import Plant
 
-from app import app
-from models import db, Plant
+class PlantTests(unittest.TestCase):
+    def setUp(self):
+        self.app = app
+        self.client = self.app.test_client()
 
-class TestPlant:
-    '''Flask application in app.py'''
-
-    def test_plant_by_id_get_route(self):
-        '''has a resource available at "/plants/<int:id>".'''
-        response = app.test_client().get('/plants/1')
-        assert(response.status_code == 200)
-
-    def test_plant_by_id_get_route_returns_one_plant(self):
-        '''returns JSON representing one Plant object at "/plants/<int:id>".'''
-        response = app.test_client().get('/plants/1')
-        data = json.loads(response.data.decode())
-
-        assert(type(data) == dict)
-        assert(data["id"])
-        assert(data["name"])
-
-    def test_plant_by_id_patch_route_updates_is_in_stock(self):
-        '''returns JSON representing updated Plant object with "is_in_stock" = False at "/plants/<int:id>".'''
-        with app.app_context():
-            plant_1 = Plant.query.filter_by(id=1).first()
-            plant_1.is_in_stock = True
-            db.session.add(plant_1)
+        with self.app.app_context():
+            db.create_all()
+            db.session.add(Plant(name="Rose", image="img", price=12.0))
             db.session.commit()
-            
-        response = app.test_client().patch(
-            '/plants/1',
-            json = {
-                "is_in_stock": False,
-            }
-        )
-        data = json.loads(response.data.decode())
 
-        assert(type(data) == dict)
-        assert(data["id"])
-        assert(data["is_in_stock"] == False)
+    def tearDown(self):
+        with self.app.app_context():
+            db.drop_all()
 
-    def test_plant_by_id_delete_route_deletes_plant(self):
-        '''returns JSON representing updated Plant object at "/plants/<int:id>".'''
-        with app.app_context():
-            lo = Plant(
-                name="Live Oak",
-                image="https://www.nwf.org/-/media/NEW-WEBSITE/Shared-Folder/Wildlife/Plants-and-Fungi/plant_southern-live-oak_600x300.ashx",
-                price=250.00,
-                is_in_stock=False,
-            )
+    def test_get_plants(self):
+        res = self.client.get("/plants")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("Rose", str(res.data))
 
-            db.session.add(lo)
-            db.session.commit()
-            
-            response = app.test_client().delete(f'/plants/{lo.id}')
-            data = response.data.decode()
+    def test_patch_plant(self):
+        res = self.client.patch("/plants/1", json={"is_in_stock": False})
+        self.assertEqual(res.status_code, 200)
+        
+        data = res.get_json()
+        self.assertIn("is_in_stock", data)
+        self.assertFalse(data["is_in_stock"])
 
-            assert(not data)
+
+    def test_get_one_plant(self):
+        res = self.client.get("/plants/1")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b"Rose", res.data)
+
+    def test_delete_plant(self):
+        res = self.client.delete("/plants/1")
+        self.assertEqual(res.status_code, 204)
+
+if __name__ == "__main__":
+    unittest.main()
